@@ -40,6 +40,7 @@ class strLabelConverter(object):
             torch.IntTensor [n]: length of each text.
         """
         if isinstance(text, str):
+            print('--- ', text)
             text = [
                 self.dict[char.lower() if self._ignore_case else char]
                 for char in text
@@ -131,13 +132,14 @@ def oneHot(v, v_length, nc):
 
 
 def loadData(v, data):
-    v.data.resize_(data.size()).copy_(data)
+    v.resize_(data.size()).copy_(data)
+    # v.data.resize_(data.size()).copy_(data)
 
 
 def prettyPrint(v):
-    print('Size {0}, Type: {1}'.format(str(v.size()), v.data.type()))
-    print('| Max: %f | Min: %f | Mean: %f' % (v.max().data[0], v.min().data[0],
-                                              v.mean().data[0]))
+    print(('Size {0}, Type: {1}'.format(str(v.size()), v.data.type())))
+    print(('| Max: %f | Min: %f | Mean: %f' % (v.max().data[0], v.min().data[0],
+                                              v.mean().data[0])))
 
 
 def assureRatio(img):

@@ -108,8 +108,8 @@ def load_params(py_layer, t7_layer):
         try:
             item.copy_(t7_param)
         except RuntimeError:
-            print('Size not match between %s and %s' %
-                  (item.size(), t7_param.size()))
+            print(('Size not match between %s and %s' %
+                  (item.size(), t7_param.size())))
 
 
 def torch_to_pytorch(model, t7_file, output):

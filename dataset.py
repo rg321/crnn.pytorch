@@ -8,60 +8,136 @@ from torch.utils.data import sampler
 import torchvision.transforms as transforms
 import lmdb
 import six
-import sys
+import sys 
 from PIL import Image
 import numpy as np
+import os
+import PIL
 
+
+# class lmdbDataset(Dataset):
+
+#     def __init__(self, root=None, transform=None, target_transform=None):
+#         self.env = lmdb.open(
+#             root,
+#             max_readers=1,
+#             readonly=True,
+#             lock=False,
+#             readahead=False,
+#             meminit=False)
+
+#         if not self.env:
+#             print(('cannot creat lmdb from %s' % (root)))
+#             sys.exit(0)
+
+#         with self.env.begin(write=False) as txn:
+#             nSamples = int(txn.get(b'num-samples'))
+#             self.nSamples = nSamples
+
+#         self.transform = transform
+#         self.target_transform = target_transform
+
+#     def __len__(self):
+#         return self.nSamples
+
+#     def __getitem__(self, index):
+#         assert index <= len(self), 'index range error'
+#         index += 1
+#         with self.env.begin(write=False) as txn:
+#             img_key = 'image-%09d' % index
+#             imgbuf = txn.get(str(img_key).encode())
+
+#             buf = six.BytesIO()
+#             buf.write(imgbuf)
+#             buf.seek(0)
+#             try:
+#                 img = Image.open(buf).convert('L')
+#             except IOError:
+#                 print(('Corrupted image for %d' % index))
+#                 return self[index + 1]
+
+#             if self.transform is not None:
+#                 img = self.transform(img)
+
+#             label_key = 'label-%09d' % index
+#             label = str(txn.get(label_key))
+
+#             if self.target_transform is not None:
+#                 label = self.target_transform(label)
+
+#         return (img, label)
 
 class lmdbDataset(Dataset):
 
     def __init__(self, root=None, transform=None, target_transform=None):
-        self.env = lmdb.open(
-            root,
-            max_readers=1,
-            readonly=True,
-            lock=False,
-            readahead=False,
-            meminit=False)
+        # self.env = lmdb.open(
+        #     root,
+        #     max_readers=1,
+        #     readonly=True,
+        #     lock=False,
+        #     readahead=False,
+        #     meminit=False)
+        # if not self.env:
+        #     print(('cannot creat lmdb from %s' % (root)))
+        #     sys.exit(0)
 
-        if not self.env:
-            print('cannot creat lmdb from %s' % (root))
-            sys.exit(0)
+        # with self.env.begin(write=False) as txn:
+        #     nSamples = int(txn.get(b'num-samples'))
+        #     self.nSamples = nSamples
+        self.root = root
+        # images_names_tempList = os.listdir(root)
+        images_names_final_list=[]
+        for fname in os.listdir(root):
+            path = os.path.join(root, fname)
+            if not os.path.isdir(path):
+                try:
+                    Image.open(path)
+                except PIL.UnidentifiedImageError:
+                    os.remove(path)
+                else:
+                    images_names_final_list.append(fname)
+        self.images_names = images_names_final_list
+        print('===== ', self.images_names[155])
+        self.nSamples = len(images_names_final_list)
 
-        with self.env.begin(write=False) as txn:
-            nSamples = int(txn.get('num-samples'))
-            self.nSamples = nSamples
+
 
         self.transform = transform
         self.target_transform = target_transform
 
     def __len__(self):
+        print('------- nSamples', self.nSamples)
         return self.nSamples
 
     def __getitem__(self, index):
-        assert index <= len(self), 'index range error'
+        print('----- index ', index )
+        assert index < self.nSamples, 'index range error'
         index += 1
-        with self.env.begin(write=False) as txn:
-            img_key = 'image-%09d' % index
-            imgbuf = txn.get(img_key)
+        # with self.env.begin(write=False) as txn:
+        #     img_key = 'image-%09d' % index
+        #     imgbuf = txn.get(str(img_key).encode())
 
-            buf = six.BytesIO()
-            buf.write(imgbuf)
-            buf.seek(0)
-            try:
-                img = Image.open(buf).convert('L')
-            except IOError:
-                print('Corrupted image for %d' % index)
-                return self[index + 1]
+        #     buf = six.BytesIO()
+        #     buf.write(imgbuf)
+        #     buf.seek(0)
+        #     try:
+        #         img = Image.open(buf).convert('L')
+        #     except IOError:
+        #         print(('Corrupted image for %d' % index))
+        #         return self[index + 1]
 
-            if self.transform is not None:
-                img = self.transform(img)
+        #     if self.transform is not None:
+        #         img = self.transform(img)
 
-            label_key = 'label-%09d' % index
-            label = str(txn.get(label_key))
+        #     label_key = 'label-%09d' % index
+        #     label = str(txn.get(label_key))
 
-            if self.target_transform is not None:
-                label = self.target_transform(label)
+        #     if self.target_transform is not None:
+        #         label = self.target_transform(label)
+        img_name = self.images_names[index]
+        label = img_name.split('_')[0]
+        img_path = os.path.join(self.root, img_name)
+        img  = Image.open(img_path).convert('L')
 
         return (img, label)
 
@@ -115,7 +191,7 @@ class alignCollate(object):
         self.min_ratio = min_ratio
 
     def __call__(self, batch):
-        images, labels = zip(*batch)
+        images, labels = list(zip(*batch))
 
         imgH = self.imgH
         imgW = self.imgW
