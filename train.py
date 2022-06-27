@@ -70,9 +70,12 @@ train_loader = torch.utils.data.DataLoader(
     train_dataset, batch_size=opt.batchSize,
     shuffle=True, sampler=sampler,
     num_workers=int(opt.workers),
-    collate_fn=dataset.alignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio=opt.keep_ratio))
+    collate_fn=dataset.alignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio=opt.keep_ratio),
+    drop_last=True)
 test_dataset = dataset.lmdbDataset(
-    root=opt.valroot, transform=dataset.resizeNormalize((100, 32)))
+    root=opt.valroot,
+    transform=dataset.resizeNormalize((100, 32))
+    )
 
 nclass = len(opt.alphabet) + 1
 nc = 1
@@ -125,7 +128,7 @@ else:
     optimizer = optim.RMSprop(crnn.parameters(), lr=opt.lr)
 
 
-def val(net, dataset, criterion, max_iter=100):
+def val(net, test_dataset, criterion, max_iter=100):
     print('Start val')
 
     for p in crnn.parameters():
@@ -133,7 +136,12 @@ def val(net, dataset, criterion, max_iter=100):
 
     net.eval()
     data_loader = torch.utils.data.DataLoader(
-        dataset, shuffle=True, batch_size=opt.batchSize, num_workers=int(opt.workers))
+        test_dataset,
+        shuffle=True,
+        batch_size=opt.batchSize,
+        # collate_fn=dataset.alignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio=opt.keep_ratio),
+        num_workers=int(opt.workers)
+        )
     val_iter = iter(data_loader)
 
     i = 0
@@ -152,12 +160,16 @@ def val(net, dataset, criterion, max_iter=100):
         utils.loadData(length, l)
 
         preds = crnn(image)
+        print('--------- ', preds.shape)
+        # break
         preds_size = Variable(torch.IntTensor([preds.size(0)] * batch_size))
         cost = criterion(preds, text, preds_size, length) / batch_size
         loss_avg.add(cost)
+        # import pdb; pdb.set_trace()
 
         _, preds = preds.max(2)
-        preds = preds.squeeze(2)
+        # print('---- ', preds.shape)
+        # preds = preds.squeeze(2)
         preds = preds.transpose(1, 0).contiguous().view(-1)
         sim_preds = converter.decode(preds.data, preds_size.data, raw=False)
         for pred, target in zip(sim_preds, cpu_texts):

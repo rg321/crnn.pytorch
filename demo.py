@@ -14,6 +14,7 @@ try:
     img_path=a
 except:
     img_path = './data/demo.png'
+img_path = './data/demo.png'
 alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'
 
 model = crnn.CRNN(32, 1, 37, 256)

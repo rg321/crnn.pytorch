@@ -13,6 +13,7 @@ from PIL import Image
 import numpy as np
 import os
 import PIL
+import numpy as np
 
 
 # class lmdbDataset(Dataset):
@@ -96,8 +97,12 @@ class lmdbDataset(Dataset):
                     os.remove(path)
                 else:
                     images_names_final_list.append(fname)
-        self.images_names = images_names_final_list
-        print('===== ', self.images_names[155])
+
+        # from copy import copy
+        # self.images_names = copy(images_names_final_list)
+        self.images_names = sorted(images_names_final_list, key=lambda x: len(x.split('_')[0]))
+        # print(self.images_names)
+        # print('===== ', self.images_names[155])
         self.nSamples = len(images_names_final_list)
 
 
@@ -106,13 +111,16 @@ class lmdbDataset(Dataset):
         self.target_transform = target_transform
 
     def __len__(self):
-        print('------- nSamples', self.nSamples)
-        return self.nSamples
+        # print('------- nSamples', len(self.images_names))
+        return len(self.images_names)
+        # print('------- nSamples', self.nSamples)
+        # return self.nSamples
 
     def __getitem__(self, index):
-        print('----- index ', index )
-        assert index < self.nSamples, 'index range error'
-        index += 1
+        # try:
+        # assert index < self.nSamples, 'index range error'
+        # index += 1
+        # print('----- index ', index )
         # with self.env.begin(write=False) as txn:
         #     img_key = 'image-%09d' % index
         #     imgbuf = txn.get(str(img_key).encode())
@@ -126,20 +134,31 @@ class lmdbDataset(Dataset):
         #         print(('Corrupted image for %d' % index))
         #         return self[index + 1]
 
-        #     if self.transform is not None:
-        #         img = self.transform(img)
 
         #     label_key = 'label-%09d' % index
         #     label = str(txn.get(label_key))
 
         #     if self.target_transform is not None:
         #         label = self.target_transform(label)
+        # print('--- final check', len(self.images_names), 'and index ', index)
         img_name = self.images_names[index]
         label = img_name.split('_')[0]
         img_path = os.path.join(self.root, img_name)
         img  = Image.open(img_path).convert('L')
+        # img = np.array(img)
+        # img = transforms.ToTensor()(img).squeeze(0)
+        # img = transforms.ToTensor()(img)
+
+        if self.transform is not None:
+            # print('------------- transformed')
+            img = self.transform(img)
+
+        if self.target_transform is not None:
+            label = self.target_transform(label)
 
         return (img, label)
+        # except:
+        #     raise IndexError
 
 
 class resizeNormalize(object):
@@ -150,9 +169,28 @@ class resizeNormalize(object):
         self.toTensor = transforms.ToTensor()
 
     def __call__(self, img):
+        # print('resizeNormalize ---- img.type ', type(img))
+        # print('resizeNormalize ---- img.shape ', img.size)
+        # print('resizeNormalize ---- to size ', self.size)
+        # print('resizeNormalize ---- img ', np.asarray(img))
+
         img = img.resize(self.size, self.interpolation)
+        # print('resizeNormalize ---- img.size after resizing ', img.size)
+        # print('resizeNormalize ---- img after resizing', np.asarray(img))
+
+        # img = np.asarray(img)
+        # img = np.resize(img, (self.size[0], self.size[1]))
+        # # img = img.resize(self.size[0], self.size[1], self.interpolation, refcheck=False)
+        # print('resizeNormalize ---- img.shape after resizing ', img.shape)
+        # print('resizeNormalize ---- img after resizing', img)
+
         img = self.toTensor(img)
+        # print('resizeNormalize ---- img.type after resizing to tensor', type(img))
+        # print('resizeNormalize ---- img.shape after resizing to tensor ', img.shape)
+        # print('resizeNormalize ---- img.size after resizing to tensor ', img.size())
+        # print('resizeNormalize ---- img after resizing to tensor ', img)
         img.sub_(0.5).div_(0.5)
+        # print('resizeNormalize ---- img after normalization ', img)
         return img
 
 
@@ -198,7 +236,9 @@ class alignCollate(object):
         if self.keep_ratio:
             ratios = []
             for image in images:
+                # print('-------- type ', type(image))
                 w, h = image.size
+                # print('-------- image.shape ', image.shape)
                 ratios.append(w / float(h))
             ratios.sort()
             max_ratio = ratios[-1]
