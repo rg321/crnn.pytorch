@@ -14,7 +14,7 @@ try:
     img_path=a
 except:
     img_path = './data/demo.png'
-img_path = './data/demo.png'
+# img_path = './data/demo.png'
 alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'
 
 model = crnn.CRNN(32, 1, 37, 256)
@@ -32,14 +32,19 @@ if torch.cuda.is_available():
     image = image.cuda()
 image = image.view(1, *image.size())
 image = Variable(image)
+print('---- ', image.shape)
 
 model.eval()
 preds = model(image)
-
+print('--------- ', preds.shape)
 _, preds = preds.max(2)
+print('------------ ', preds.shape)
 preds = preds.transpose(1, 0).contiguous().view(-1)
+print('--------------- ', preds.shape)
 
 preds_size = Variable(torch.IntTensor([preds.size(0)]))
+print('-------------------- ', preds_size.shape)
+print('----------------------------- ', preds.data)
 raw_pred = converter.decode(preds.data, preds_size.data, raw=True)
 sim_pred = converter.decode(preds.data, preds_size.data, raw=False)
 print(('%-20s => %-20s' % (raw_pred, sim_pred)))

@@ -190,7 +190,9 @@ class resizeNormalize(object):
         # print('resizeNormalize ---- img.size after resizing to tensor ', img.size())
         # print('resizeNormalize ---- img after resizing to tensor ', img)
         img.sub_(0.5).div_(0.5)
+
         # print('resizeNormalize ---- img after normalization ', img)
+        # img = img.view(1, *img.size())
         return img
 
 

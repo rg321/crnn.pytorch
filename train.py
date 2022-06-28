@@ -74,7 +74,7 @@ train_loader = torch.utils.data.DataLoader(
     drop_last=True)
 test_dataset = dataset.lmdbDataset(
     root=opt.valroot,
-    transform=dataset.resizeNormalize((100, 32))
+    # transform=dataset.resizeNormalize((100, 32))
     )
 
 nclass = len(opt.alphabet) + 1
@@ -139,7 +139,7 @@ def val(net, test_dataset, criterion, max_iter=100):
         test_dataset,
         shuffle=True,
         batch_size=opt.batchSize,
-        # collate_fn=dataset.alignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio=opt.keep_ratio),
+        collate_fn=dataset.alignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio=opt.keep_ratio),
         num_workers=int(opt.workers)
         )
     val_iter = iter(data_loader)
@@ -168,7 +168,7 @@ def val(net, test_dataset, criterion, max_iter=100):
         # import pdb; pdb.set_trace()
 
         _, preds = preds.max(2)
-        # print('---- ', preds.shape)
+        print('---- ', preds.shape)
         # preds = preds.squeeze(2)
         preds = preds.transpose(1, 0).contiguous().view(-1)
         sim_preds = converter.decode(preds.data, preds_size.data, raw=False)
@@ -196,6 +196,19 @@ def trainBatch(net, criterion, optimizer):
     preds = crnn(image)
     # print('preds -- ', preds)
     preds_size = Variable(torch.IntTensor([preds.size(0)] * batch_size))
+    # --------------------------
+
+    _, preds_temp = preds.max(2)
+    preds_temp = preds_temp.transpose(1, 0).contiguous().view(-1)
+    sim_preds = converter.decode(preds_temp.data, preds_size.data, raw=False)
+
+    raw_preds = converter.decode(preds_temp.data, preds_size.data, raw=True)[:opt.n_test_disp]
+    for raw_pred, pred, gt in zip(raw_preds, sim_preds, cpu_texts):
+        print('%-20s => %-20s, gt: %-20s' % (raw_pred, pred, gt))
+
+
+
+    # --------------------------
     cost = criterion(preds, text, preds_size, length) / batch_size
     crnn.zero_grad()
     cost.backward()
